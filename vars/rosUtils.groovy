@@ -8,7 +8,7 @@ def buildRosPackage(Map config = [:]) {
         docker run --rm \
             -v \${WORKSPACE}:/workspace \
             -w /workspace/ros_ws \
-            ${dockerImage}:\${buildNumber} \
+            ${dockerImage}:${buildNumber} \
             /bin/bash -c '
                 source /opt/ros/noetic/setup.bash && \
                 rm -rf .catkin_tools build devel logs && \
@@ -27,14 +27,19 @@ def runRosTests(Map config = [:]) {
     def buildNumber = config.buildNumber ?: env.BUILD_NUMBER
     
     sh """
-        docker run --rm -v \${WORKSPACE}:/workspace -w /workspace/ros_ws ${dockerImage}:\${buildNumber} /bin/bash -c "
-            source /opt/ros/noetic/setup.bash &&
-            source devel/setup.bash &&
-            mkdir -p build/test_results test_results &&
-            catkin run_tests --no-deps &&
-            catkin_test_results build/test_results --verbose > test_results/summary.txt &&
-            find build -type d -name test_results -exec cp -r {} /workspace/ros_ws/test_results/ \\; || true &&
-            find build -name '*.xml' -exec cp {} /workspace/ros_ws/test_results/ \\; || true"
+        docker run --rm \
+            -v \${WORKSPACE}:/workspace \
+            -w /workspace/ros_ws \
+            ${dockerImage}:${buildNumber} \
+            /bin/bash -c '
+                source /opt/ros/noetic/setup.bash &&
+                source devel/setup.bash &&
+                mkdir -p build/test_results test_results &&
+                catkin run_tests --no-deps &&
+                catkin_test_results build/test_results --verbose > test_results/summary.txt &&
+                find build -type d -name test_results -exec cp -r {} /workspace/ros_ws/test_results/ \\; || true &&
+                find build -name "*.xml" -exec cp {} /workspace/ros_ws/test_results/ \\; || true
+            '
     """
 }
 
@@ -51,7 +56,8 @@ def runGazeboSimulation(Map config = [:]) {
             --env LIBGL_ALWAYS_SOFTWARE=1 \
             --env ROS_MASTER_URI=http://localhost:11311 \
             --env ROS_HOSTNAME=localhost \
-            ${dockerImage}:\${buildNumber} bash -c "
+            ${dockerImage}:${buildNumber} \
+            /bin/bash -c '
                 source /opt/ros/noetic/setup.bash && \
                 catkin build && \
                 source devel/setup.bash && \
@@ -60,6 +66,7 @@ def runGazeboSimulation(Map config = [:]) {
                     gui:=false \
                     record:=true \
                     --screen \
-                    --wait"
+                    --wait
+            '
     """
 }
